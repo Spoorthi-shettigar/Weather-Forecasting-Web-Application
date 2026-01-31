@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Weather App</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+*{
+ margin:0;
+ padding:0;
+ box-sizing:border-box;
+ font-family:Poppins;
+}
+
+body{
+ min-height:100vh;
+ background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ transition:0.5s;
+}
+
+.light{
+ background:linear-gradient(135deg,#89f7fe,#66a6ff);
+}
+
+.app{
+ width:360px;
+ background:#1f2933;
+ color:white;
+ border-radius:20px;
+ padding:20px;
+ box-shadow:0 0 30px rgba(0,0,0,0.4);
+}
+
+.light .app{
+ background:#ffffff;
+ color:black;
+}
+
+.search{
+ display:flex;
+ gap:10px;
+}
+
+.search input{
+ flex:1;
+ padding:10px;
+ border-radius:10px;
+ border:none;
+}
+
+.search button{
+ padding:10px 15px;
+ border:none;
+ border-radius:10px;
+ cursor:pointer;
+}
+
+.toggle{
+ text-align:right;
+ margin-top:10px;
+ cursor:pointer;
+}
+
+.weather{
+ text-align:center;
+ margin-top:20px;
+}
+
+.weather img{
+ width:100px;
+}
+
+.temp{
+ font-size:55px;
+}
+
+.details{
+ display:grid;
+ grid-template-columns:repeat(2,1fr);
+ gap:10px;
+ margin-top:15px;
+}
+
+.card{
+ background:#374151;
+ padding:10px;
+ border-radius:10px;
+ text-align:center;
+}
+
+.light .card{
+ background:#e5e7eb;
+}
+
+.forecast{
+ display:flex;
+ overflow-x:auto;
+ gap:10px;
+ margin-top:15px;
+}
+
+.day{
+ background:#374151;
+ padding:10px;
+ border-radius:10px;
+ min-width:70px;
+ text-align:center;
+}
+
+.light .day{
+ background:#e5e7eb;
+}
+
+.loader{
+ display:none;
+ text-align:center;
+ margin-top:15px;
+}
+
+canvas{
+ margin-top:20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<div class="search">
+<input id="cityInput" placeholder="Enter city">
+<button onclick="getWeather()">🔍</button>
+</div>
+
+<div class="toggle" onclick="toggleTheme()">🌙 / ☀</div>
+
+<div class="loader" id="loader">Loading...</div>
+
+<div class="weather">
+<img id="icon">
+<div class="temp" id="temp">--°C</div>
+<h2 id="city">City</h2>
+<p id="condition"></p>
+</div>
+
+<div class="details">
+<div class="card">Humidity <h3 id="humidity"></h3></div>
+<div class="card">Wind <h3 id="wind"></h3></div>
+<div class="card">Feels Like <h3 id="feels"></h3></div>
+<div class="card">UV <h3 id="uv"></h3></div>
+</div>
+
+<h3 style="margin-top:15px">7 Day Forecast</h3>
+<div class="forecast" id="forecast"></div>
+
+<canvas id="chart"></canvas>
+
+</div>
+
+<script>
+const key="c43026568ab74d51901151527263101";
+let chart;
+
+window.onload=()=>{ getLocation(); }
+
+function toggleTheme(){
+ document.body.classList.toggle("light");
+}
+
+function showLoader(v){
+ document.getElementById("loader").style.display=v?"block":"none";
+}
+
+function getLocation(){
+ navigator.geolocation.getCurrentPosition(pos=>{
+   fetchWeather(`${pos.coords.latitude},${pos.coords.longitude}`);
+ });
+}
+
+function getWeather(){
+ let city=document.getElementById("cityInput").value;
+ fetchWeather(city);
+}
+
+async function fetchWeather(query){
+ showLoader(true);
+
+ let url=`https://api.weatherapi.com/v1/forecast.json?key=${key}&q=${query}&days=7&aqi=yes`;
+
+ let res=await fetch(url);
+ let data=await res.json();
+ showLoader(false);
+
+ document.getElementById("temp").innerHTML=data.current.temp_c+"°C";
+ document.getElementById("city").innerHTML=data.location.name;
+ document.getElementById("condition").innerHTML=data.current.condition.text;
+ document.getElementById("humidity").innerHTML=data.current.humidity+"%";
+ document.getElementById("wind").innerHTML=data.current.wind_kph+" km/h";
+ document.getElementById("feels").innerHTML=data.current.feelslike_c+"°C";
+ document.getElementById("uv").innerHTML=data.current.uv;
+ document.getElementById("icon").src="https:"+data.current.condition.icon;
+
+ showForecast(data.forecast.forecastday);
+ showChart(data.forecast.forecastday);
+}
+
+function showForecast(days){
+ let box=document.getElementById("forecast");
+ box.innerHTML="";
+ days.forEach(d=>{
+  box.innerHTML+=`
+   <div class="day">
+    <p>${d.date.slice(5)}</p>
+    <img src="https:${d.day.condition.icon}">
+    <p>${d.day.avgtemp_c}°</p>
+   </div>
+  `;
+ });
+}
+
+function showChart(days){
+ let labels=[];
+ let temps=[];
+ days.forEach(d=>{
+  labels.push(d.date.slice(5));
+  temps.push(d.day.avgtemp_c);
+ });
+
+ if(chart) chart.destroy();
+
+ chart=new Chart(document.getElementById("chart"),{
+  type:"line",
+  data:{
+   labels:labels,
+   datasets:[{
+    label:"Avg Temp °C",
+    data:temps,
+    borderColor:"orange",
+    fill:false
+   }]
+  }
+ });
+}
+</script>
+
+</body>
+</html>
